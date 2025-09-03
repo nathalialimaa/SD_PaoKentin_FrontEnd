@@ -1,4 +1,4 @@
-const apiUrl = "http://localhost:8080"
+const apiUrl = "https://sd-paokentin-backend.onrender.com"
 
 const escolherPaoUl = document.querySelector(".escolher-pao")
 const preparandoPaoUl = document.querySelector(".preparando-pao")
