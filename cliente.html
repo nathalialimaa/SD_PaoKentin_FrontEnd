@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cliente — PãoKentin</title>
+  <style>
+    :root{
+      --gap: 12px;
+      --radius: 12px;
+      --bg: #f6f7fb;
+      --card: #fff;
+      --muted: #666;
+    }
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial, sans-serif;background:var(--bg);color:#111}
+    .app{max-width:900px;margin:28px auto;padding:18px}
+
+    header{margin-bottom:20px;text-align:center}
+    header h1{font-size:22px;margin:0}
+    header p{margin:6px 0 0;color:var(--muted);font-size:14px}
+
+    .card{background:var(--card);padding:16px;border-radius:14px;box-shadow:0 6px 18px rgba(15,23,42,0.06);margin-bottom:18px}
+
+    .list{display:flex;flex-direction:column;gap:12px}
+    .fornada{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #eee;border-radius:10px;background:#fafafa}
+    .swatch{width:48px;height:48px;border-radius:10px;flex-shrink:0}
+    .meta{flex:1}
+    .meta strong{font-size:16px;display:block;margin-bottom:4px}
+    .muted{color:var(--muted);font-size:13px}
+
+    .toast{position:fixed;right:18px;bottom:18px;padding:10px 14px;background:#0b8457;color:#fff;border-radius:8px;box-shadow:0 6px 18px rgba(2,6,23,0.12);transform:translateY(8px);opacity:0;pointer-events:none;transition:all .18s}
+    .toast.show{opacity:1;transform:translateY(0);pointer-events:auto}
+
+    #fornadas-list {
+      display: flex;
+      flex-direction: column-reverse;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Últimas Fornadas — PãoKentin</h1>
+      <p>Acompanhe os pães que estão sendo preparados e saiba quando ficam prontos.</p>
+    </header>
+
+    <section class="card">
+      <h2 style="margin:0 0 12px 0">Forno em atividade</h2>
+      <div id="fornadas-list" class="list">
+        <!-- Fornadas injetadas aqui -->
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast">Atualizado!</div>
+
+  <script>
+    const API_BASE = 'http://localhost:8080';
+    const FORNADAS_ENDPOINT = API_BASE + '/paes/fornadas';
+
+    const listEl = document.getElementById('fornadas-list');
+    const toast = document.getElementById('toast');
+    let timers = [];
+
+    function showToast(text){
+      toast.textContent = text;
+      toast.classList.add('show');
+      setTimeout(()=>toast.classList.remove('show'),2000);
+    }
+
+    async function fetchFornadas(){
+      try{
+        const res = await fetch(FORNADAS_ENDPOINT);
+        const fornadas = await res.json();
+        renderFornadas(fornadas);
+      }catch(err){
+        listEl.innerHTML = '<div class="muted">Erro ao carregar fornadas.</div>';
+      }
+    }
+
+    function clearTimers(){ timers.forEach(t=>clearInterval(t)); timers=[] }
+
+    function renderFornadas(fornadas){
+      clearTimers();
+      listEl.innerHTML = '';
+      if(fornadas.length === 0){
+        listEl.innerHTML = '<div class="muted">Nenhuma fornada registrada.</div>';
+        return;
+      }
+      fornadas.forEach(f => {
+        const div = document.createElement('div');
+        div.className = 'fornada';
+        const sw = document.createElement('div');
+        sw.className = 'swatch';
+        sw.style.background = f.pao.cor || '#777';
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const title = document.createElement('strong');
+        title.textContent = f.nomePao || ('Pão ' + f.pao.nome);
+        const info = document.createElement('div');
+        info.className = 'muted';
+
+        const ini = new Date(f.dataHoraInicio);
+        const fim = new Date(f.dataHoraFim);
+        const span = document.createElement('span');
+
+        function updateCountdown(){
+          const now = new Date();
+          if(now >= fim){
+            span.textContent = 'Pronto';
+            return;
+          }
+          const diff = fim - now;
+          const min = Math.floor(diff/60000);
+          const sec = Math.floor((diff%60000)/1000);
+          span.textContent = `Faltam ${min}m ${String(sec).padStart(2,'0')}s`;
+        }
+        updateCountdown();
+        const tid = setInterval(updateCountdown,1000);
+        timers.push(tid);
+
+        info.textContent = 'Início: ' + ini.toLocaleTimeString() + ' • ';
+        info.appendChild(span);
+
+        meta.appendChild(title);
+        meta.appendChild(info);
+        div.appendChild(sw);
+        div.appendChild(meta);
+        listEl.appendChild(div);
+      });
+    }
+
+    fetchFornadas();
+    setInterval(fetchFornadas,20000);
+  </script>
+</body>
+</html>

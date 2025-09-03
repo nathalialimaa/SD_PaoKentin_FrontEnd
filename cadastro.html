@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cadastro de Pães — PãoKentin</title>
+  <style>
+    :root {
+      --gap: 12px;
+      --radius: 12px;
+      --bg: #f6f7fb;
+      --card: #fff;
+      --muted: #666;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      font-family: Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: #111
+    }
+
+    .app {
+      max-width: 1100px;
+      margin: 28px auto;
+      padding: 18px
+    }
+
+    header {
+      margin-bottom: 20px
+    }
+
+    header h1 {
+      font-size: 20px;
+      margin: 0
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .card {
+      background: var(--card);
+      padding: 16px;
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+      margin-bottom: 18px
+    }
+
+    form label {
+      display: block;
+      margin-top: 10px;
+      font-weight: 500
+    }
+
+    form input,
+    form textarea {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-top: 4px;
+      font-size: 14px
+    }
+
+    form button {
+      margin-top: 16px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 0;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer
+    }
+
+    form button:disabled {
+      opacity: .6;
+      cursor: not-allowed
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px
+    }
+
+    table th,
+    table td {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      text-align: left
+    }
+
+    table th {
+      background: #f1f5f9;
+      font-size: 14px
+    }
+
+    .detail {
+      padding: 10px;
+      border-radius: 8px;
+      background: #f9fafb;
+      border: 1px solid #eee;
+      margin-top: 12px
+    }
+
+    .color-swatch {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      vertical-align: middle;
+      margin-left: 6px
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      padding: 10px 14px;
+      background: #0b8457;
+      color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(2, 6, 23, 0.12);
+      transform: translateY(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all .18s
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <h1>Cadastro de Pães — PãoKentin</h1>
+      <p>Gerencie os tipos de pães disponíveis na padaria.</p>
+    </header>
+
+    <section class="card">
+      <h2 style="margin:0 0 12px 0">Novo Pão</h2>
+      <form id="form-pao">
+        <label>Nome:
+          <input type="text" id="nome" required />
+        </label>
+        <label>Descrição:
+          <textarea id="descricao" rows="2"></textarea>
+        </label>
+        <label>Tempo de Preparo (segundos):
+          <input type="number" id="tempo" required min="1" />
+        </label>
+        <label>Cor de Destaque:
+          <input type="color" id="cor" value="#2b6cb0" />
+        </label>
+        <button type="submit">Cadastrar</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 12px 0">Lista de Pães</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Descrição</th>
+            <th>Tempo (segundos)</th>
+            <th>Cor</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="paes-list">
+          <!-- Linhas injetadas -->
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 12px 0">Detalhe</h2>
+      <div id="detail" class="detail muted">Selecione um pão para visualizar detalhes.</div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast">Salvo!</div>
+
+  <script>
+    const API_BASE = 'http://localhost:8080';
+    const PAES_ENDPOINT = API_BASE + '/paes';
+
+    const form = document.getElementById('form-pao');
+    const listEl = document.getElementById('paes-list');
+    const detailEl = document.getElementById('detail');
+    const toast = document.getElementById('toast');
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    async function fetchPaes() {
+      try {
+        const res = await fetch(PAES_ENDPOINT);
+        const paes = await res.json();
+        renderPaes(paes);
+      } catch (err) {
+        listEl.innerHTML = '<tr><td colspan="5">Erro ao carregar pães.</td></tr>';
+      }
+    }
+
+    function renderPaes(paes) {
+      listEl.innerHTML = '';
+      if (paes.length === 0) {
+        listEl.innerHTML = '<tr><td colspan="5" class="muted">Nenhum pão cadastrado.</td></tr>';
+        return;
+      }
+      paes.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.nome}</td>
+          <td>${p.descricao || ''}</td>
+          <td>${p.tempoPreparo}</td>
+          <td><span class="color-swatch" style="background:${p.cor || '#777'}"></span></td>
+          <td><button data-id="${p.id}">Ver</button></td>
+        `;
+        tr.querySelector('button').onclick = () => showDetail(p);
+        listEl.appendChild(tr);
+      });
+    }
+
+    function showDetail(p) {
+      detailEl.classList.remove('muted');
+      detailEl.innerHTML = `
+        <strong>${p.nome}</strong><br>
+        <span>${p.descricao || 'Sem descrição'}</span><br>
+        Tempo: ${p.tempoPreparo} segundos<br>
+        Cor: <span class="color-swatch" style="background:${p.cor || '#777'}"></span>
+      `;
+    }
+
+    form.onsubmit = async e => {
+      e.preventDefault();
+      const payload = {
+        nome: form.nome.value,
+        descricao: form.descricao.value,
+        tempoPreparo: parseInt(form.tempo.value),
+        cor: form.cor.value
+      };
+      try {
+        const res = await fetch(PAES_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error('Falha no cadastro');
+        showToast('Pão cadastrado!');
+        form.reset();
+        form.cor.value = '#2b6cb0';
+        fetchPaes();
+      } catch (err) {
+        showToast('Erro ao salvar');
+      }
+    }
+
+    fetchPaes();
+  </script>
+</body>
+
+</html>

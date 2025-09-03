@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cadastro de Fornada — PãoKentin</title>
+  <style>
+    :root {
+      --gap: 12px;
+      --btn-height: 88px;
+      --radius: 12px;
+      --bg: #f6f7fb;
+      --card: #fff;
+      --muted: #666;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      font-family: Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: #111
+    }
+
+    .app {
+      max-width: 1100px;
+      margin: 28px auto;
+      padding: 18px
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px
+    }
+
+    header h1 {
+      font-size: 20px;
+      margin: 0
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .card {
+      background: var(--card);
+      padding: 16px;
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06)
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: var(--gap);
+      margin-top: 12px
+    }
+
+    .pao-btn {
+      height: var(--btn-height);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius);
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      border: 0;
+      box-shadow: 0 3px 8px rgba(2, 6, 23, 0.06);
+      transition: transform .12s ease, opacity .12s ease;
+      user-select: none;
+      color: #fff
+    }
+
+    .pao-btn:active {
+      transform: translateY(1px)
+    }
+
+    .small {
+      font-size: 13px;
+      font-weight: 500
+    }
+
+    .panel {
+      display: flex;
+      gap: 12px;
+      margin-top: 14px
+    }
+
+    .panel>.card {
+      flex: 1
+    }
+
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .recent-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      background: #fbfdff;
+      border: 1px solid rgba(2, 6, 23, 0.03)
+    }
+
+    .swatch {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      flex-shrink: 0
+    }
+
+    .meta {
+      flex: 1
+    }
+
+    .meta strong {
+      display: block
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      padding: 10px 14px;
+      background: #0b8457;
+      color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(2, 6, 23, 0.12);
+      transform: translateY(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all .18s
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto
+    }
+
+    @media (max-width:480px) {
+      :root {
+        --btn-height: 72px
+      }
+
+      .grid {
+        grid-template-columns: repeat(2, 1fr)
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Painel de Fornadas — PãoKentin</h1>
+        <p>Toque no tipo de pão para registrar uma nova fornada.</p>
+      </div>
+    </header>
+
+    <section class="card" aria-labelledby="select-title">
+      <h2 id="select-title" style="margin:0 0 8px 0">Tipos de pão</h2>
+      <div id="paesGrid" class="grid" role="list">
+      </div>
+    </section>
+
+    <div class="panel">
+      <section class="card">
+        <h3 style="margin-top:0">Últimas fornadas</h3>
+        <div id="recent" class="recent-list">
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">Registrado!</div>
+
+  <script>
+    const API_BASE = 'http://localhost:8080';
+    const PAES_ENDPOINT = API_BASE + '/paes';
+    const FORNADAS_ENDPOINT = API_BASE + '/paes/fornadas';
+    const RECENTES_ENDPOINT = API_BASE + '/paes/fornadas';
+
+    const paesGrid = document.getElementById('paesGrid');
+    const recentEl = document.getElementById('recent');
+    const toast = document.getElementById('toast');
+    const serverStatus = document.getElementById('server-status');
+
+    function showToast(text = 'Registrado!') {
+      toast.textContent = text;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    async function loadPaes() {
+      try {
+        const res = await fetch(PAES_ENDPOINT);
+        if (!res.ok) throw new Error('Falha ao buscar pães');
+        const paes = await res.json();
+        renderPaes(paes);
+      } catch (err) {
+        paesGrid.innerHTML = '<div style="grid-column:1/-1;color:#b33">Erro ao carregar pães.</div>';
+        console.error(err);
+      }
+    }
+
+    function renderPaes(paes) {
+      paesGrid.innerHTML = '';
+      paes.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'pao-btn';
+        btn.style.background = p.cor || '#2b6cb0';
+        btn.textContent = `${p.nome} (${p.tempoPreparo} segundos)`;
+        btn.setAttribute('data-id', p.id);
+        btn.setAttribute('title', p.descricao || '');
+        btn.onclick = () => onClickPao(p, btn);
+        paesGrid.appendChild(btn);
+      });
+    }
+
+    let creating = false;
+    async function onClickPao(p, btn) {
+      if (creating) return;
+      creating = true;
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Registrando…';
+      console.log({ p })
+      try {
+        const res = await fetch(`${FORNADAS_ENDPOINT}/${p.id}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+        });
+        if (!res.ok) throw new Error('Erro create fornada');
+        const created = await res.json();
+        showToast(`Fornada de ${p.nome} registrada`);
+        fetchRecents();
+      } catch (err) {
+        console.error(err); showToast('Erro ao registrar');
+      } finally {
+        btn.textContent = original;
+        btn.disabled = false;
+        creating = false;
+      }
+    }
+
+    // recents list + countdown
+    let countdownTimers = [];
+    function clearTimers() {
+      countdownTimers.forEach(id => clearInterval(id));
+      countdownTimers = []
+    }
+
+    async function fetchRecents() {
+      try {
+        const res = await fetch(RECENTES_ENDPOINT);
+        if (!res.ok) throw new Error('Falha recents');
+        const rec = await res.json();
+        renderRecents(rec);
+      } catch (err) {
+        recentEl.innerHTML = '<div class="muted">Não foi possível carregar as últimas fornadas.</div>';
+      }
+    }
+
+    function renderRecents(list) {
+      clearTimers();
+      recentEl.innerHTML = '';
+      if (!Array.isArray(list) || list.length === 0) {
+        recentEl.innerHTML = '<div class="muted">Nenhuma fornada recente.</div>';
+        return
+      }
+
+      list.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'recent-item';
+        const sw = document.createElement('div');
+        sw.className = 'swatch';
+        sw.style.background = item.cor || '#777';
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const title = document.createElement('strong');
+        title.textContent = item.nome || item.id;
+        const info = document.createElement('div');
+        info.className = 'muted';
+        const started = new Date(item.dataHoraInicio);
+        const finishAt = new Date(item.dataHoraFim);
+
+        const timeSpan = document.createElement('span');
+        function updateCountdown() {
+          const now = new Date();
+          const diff = finishAt - now;
+          if (diff <= 0) {
+            timeSpan.textContent = 'Pronto';
+            return
+          }
+          const minutes = Math.floor(diff / 60000);
+          const seconds = Math.floor((diff % 60000) / 1000);
+          timeSpan.textContent = `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+        }
+        updateCountdown();
+        const tid = setInterval(updateCountdown, 1000);
+        countdownTimers.push(tid);
+
+        info.appendChild(document.createTextNode('Início: ' + started.toLocaleTimeString()));
+        info.appendChild(document.createTextNode(' • '));
+        info.appendChild(timeSpan);
+
+        meta.appendChild(title); meta.appendChild(info);
+        div.appendChild(sw); div.appendChild(meta);
+        recentEl.appendChild(div);
+      })
+    }
+
+    (async function init() {
+      await loadPaes();
+      await fetchRecents();
+      setInterval(fetchRecents, 20000);
+    })();
+  </script>
+</body>
+
+</html>

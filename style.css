@@ -1,0 +1,100 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Roboto, sans-serif;
+}
+
+ul {
+  list-style-type: none;
+}
+
+.header {
+  padding: 1rem;
+}
+
+.container {
+  padding: 1rem;
+  height: 80vh;
+  display: flex;
+}
+
+.buttons-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  bottom: 0;
+  flex: 1;
+}
+
+.vertical-section {
+  display: flex;
+  height: 100%;
+  flex: 1;
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 0 5px;
+}
+
+.vertical-section-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.vertical-section-btn-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.vertical-section-title {
+  margin-bottom: 20px;
+}
+
+.card-pao {
+  padding: 30px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.preparar-pao-btn {
+  cursor: pointer;
+  transition: 200ms;
+}
+
+.preparar-pao-btn:hover {
+  filter: brightness(1.05);
+  /* box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px; */
+  transform: translateX(30px);
+}
+
+.frances-btn {
+  background-color: #f7c873;
+}
+
+.bolacha-btn {
+  background-color: #e6e6e6;
+}
+
+.carteiro-btn {
+  background-color: #b3d1ff;
+}
+
+.doce-btn {
+  background-color: #ffd1dc;
+}
+
+.doce-coco-btn {
+  background-color: #fff7c0;
+}
+
+.baiano-btn {
+  background-color: #c0ffc0;
+}
+
+/* Preparando */
+.card-preparando {
+}
